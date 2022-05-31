@@ -1,0 +1,7 @@
+                    Algo Distanza                     Motivo
+
+Color Moments:      Metric Distance - Minkowski L1 - Manhattan
+ELBP:               KL dist --> usiamo la coppia (max, min) come distribuzione di probabilità
+HOG:                Euclieda    
+
+

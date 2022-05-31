@@ -1,0 +1,3 @@
+task 1
+ - fare funzioni per "arrayzzare" hog e elbp
+ - fare PCA e LDA
