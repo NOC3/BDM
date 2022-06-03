@@ -102,6 +102,7 @@ def computeELBP(mainImg):
     return tmpELBP
 
 
+
 def computeHOGStruct(imgStruct):
     for img in imgStruct:
         img["features"]["HOG"] = computeHOG(img)

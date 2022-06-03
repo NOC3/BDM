@@ -12,16 +12,16 @@ all_return_type = ["sp", "tp"]
 model = all_models[0]
 type = all_type[0]
 k = 2
-rd = all_rd[1]
+rd = all_rd[2]
 return_type = all_return_type[0]
 
 
 
-struct = initStruct("./all")
+struct = initStruct("./all_tmp")
 
 res = l_semantics(struct, model, type, k, rd, return_type)
 
-print(res[1])
+#print(res[1])
 
 res1 = clustering(res[1], return_type)
 

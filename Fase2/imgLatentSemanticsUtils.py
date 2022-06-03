@@ -1,28 +1,182 @@
-from operator import mod
 from imgStruct import *
+
 from sklearn.decomposition import TruncatedSVD
+from sklearn.decomposition import PCA as PCAsolver
+from sklearn.decomposition import LatentDirichletAllocation as LDAsolver
+import numpy as np
+
+#funzione wrapper per calcolare la matrice di similarità in base a tipo-tipo o sogegtto-soggetto
+def matrix_similarity(struct, model, k, type):
+    #estrazione e suddivisione in un dizionario keys = tipi con per ogni valore una matrice con gli objs del tipo e le loro features
+    dict = criteria_subd(struct, type, model)
+    #per ogni tipo del dizionario troviamo un "centroide"/"mediano" e creiamo una matrice tipo-features con tipo = centroide
+    median_dict = []
+    keys_dict = []
+    print("\tComputing centroide...")
+    for t in dict:
+        #c = compute_centroide(dict[t])
+        c = compute_virtual_obj(dict[t])
+        median_dict.append(c)
+        keys_dict.append(t)
+        print("\t\t[done]")
+
+    print("\t\t[done]")
+    
+
+    #calcoliamo la matrice trasposta
+    np_matrix = np.array(median_dict)
+    np_keys = np.array(keys_dict)
+
+    np_matrix_transpose = np.transpose(np_matrix)
+    #moltiplichiamo le due matrici
+    similarity_matrix = np.dot(np_matrix, np_matrix_transpose)
+
+    return (similarity_matrix, keys_dict)
+
+    
+def criteria_subd(struct, type, model):
+    print("\tComputing criteria...")
+    match type:
+        case "ss":
+            c = "Y"
+        case "tt":
+            c = "X"
+    dict = {}
+    set = {}
+    for img in struct:
+        subID = img[c]
+
+        if subID in set.keys(): 
+            old = set[subID]
+            old.append(img)
+            set[subID] = old
+        else:
+            set[subID] = [img]
+    #cicliamo sul set che contiene per ogni tipo tutti gli oggetti
+    #otteniamo un dizionario che per ogni tipo ha una maticizzazione degli oggetti
+
+    for t in set:
+        type_set = set[t]
+        dict[t] = wrapper_to_matrix(type_set,model)
+    print("\t\t[done]")
+
+    return dict
+
+#wrapper per estrarre le matrici dalla struct
+def wrapper_to_matrix(struct,model):
+    match model:
+        case "moments":
+            return structToMatrixMoments(struct)
+        case "ELBP":
+            return  structToMatrixELBP(struct)
+        case "HOG":
+            return  structToMatrixHog(struct)
+        
+
+#prende in input un a matrice X-features e ne trova il rappresentante -> come rappresentante si prende l'ggetto mediano
+def compute_centroide(matrix):
+
+    #oggetto mediano:
+    #calcoliamo la matrice di distanze
+    #per ogni obj calcoliamo la media (=> alla distanza media tra questo e tutti gli altri objs)
+    #sort, prendiamo l'obj con distanza media minore
+    dist_matrix = [[None for i in range(len(matrix))] for j in range(len(matrix))] 
+    i = 0
+    while i < len(matrix):
+        j = 0
+        while j < len(matrix):
+            if(dist_matrix[j][i]==None):
+                #compute
+                dist_matrix[i][j] = L2_distance(matrix[i], matrix[j])
+            else:
+                dist_matrix[i][j] = dist_matrix[j][i]
+            j+=1
+        i+=1
+
+    dist_dict = {}
+    for row in range(len(dist_matrix)):
+        sum = 0
+        i = 0
+        row_obj = dist_matrix[row]
+        len_row = len(row_obj)
+        while i < len_row:
+            sum += row_obj[i]
+            i+=1
+        res = sum / i 
+        dist_dict[row] = res
+
+    dict_sorted = sorted(dist_dict.items(), key= lambda x:x[1],reverse=True)
+
+    centroide = dict_sorted[0][0]
+    return matrix[centroide]
+
+
+        
+def compute_virtual_obj(matrix):
+
+    #oggetto mediano:
+    #calcoliamo la matrice di distanze
+    #per ogni obj calcoliamo la media (=> alla distanza media tra questo e tutti gli altri objs)
+    #sort, prendiamo l'obj con distanza media minore
+
+
+    virtual_obj = []
+    i = 0
+    while i<len(matrix[0]):
+        j = 0
+        sum = 0
+        while j<len(matrix):
+            sum += matrix[j][i]
+            j+=1
+        tmp = sum/j
+        virtual_obj.append(tmp)
+        i+=1
+
+
+
+
+    return virtual_obj
+
+
+
+def L2_distance(v1, v2):
+    lenV1 = len(v1)
+    
+    if lenV1!=len(v2):
+        print("Error: 85 - imgLatentSemantics")
+        return None
+    i = 0
+    summatory = 0
+    while i<lenV1:
+        summatory += pow(v1[i]-v2[i],2)
+        i+=1
+
+    return pow(summatory, 1/2)
 
 
 #l_semantics(modello_feature, Xutente_tipo, k, tecnicheRD, tipo-peso/soggetto-peso?)
-def l_semantics(datas, model, type, k, rd, return_type):
-
-    struct = type_filter(datas,type)
+def l_semantics(datas, model, type, k, rd):
+    print("\tComputing criteria...")
+    if(type!=None):
+        struct = type_filter(datas,type)
+    else:
+        struct = datas
    
     #task1
     #estrarre secondo il modello i dati da datas
     structComputedFeatures = computeStruct(struct, model)
     
-    
     #estrazione semantiche latenti con algo di riduzione di dimensionalità
     latentSemanticsList = computeLatentSemantics(structComputedFeatures, rd, k, model)
 
+    print("\t\t[done]")
 
     return latentSemanticsList
 
 
 
 def computeStruct(imgStruct, model):
-
+    print("\tComputing struct...")
     match model:
         case "moments":
             return computeMomentsStruct(imgStruct)
@@ -31,20 +185,33 @@ def computeStruct(imgStruct, model):
         case "HOG":
             return computeHOGStruct(imgStruct)
 
+
 def computeLatentSemantics(datas, rd, k, model):
     match rd:
         case "PCA":
-            tmp = PCA()
+            tmp = PCA(datas, k, model)
         case "SVD":
             tmp = SVD(datas, k, model)
         case "LDA":
-            tmp = LDA()
-    
+            tmp = LDA(datas, k, model)
     return tmp
 
-def PCA():
+def computeLatentSemanticsMatrix(matrix, rd, k):
 
-    return 0
+    match rd:
+        case "PCA":
+            model = PCAsolver(n_components=k, svd_solver='arpack')
+        case "SVD":
+            model = TruncatedSVD(n_components=k,algorithm='arpack')
+        case "LDA":
+            model = LDAsolver(n_components=k)
+    
+
+
+    fit = model.fit_transform(matrix) 
+
+    return fit
+
 
 #https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.TruncatedSVD.html
 #usiamo ARPACK poichè usa un eigensolver, dalla teoria eigen vector
@@ -55,20 +222,70 @@ def SVD(training_datas, k, model):
         case "moments":
             datas = structToMatrixMoments(training_datas)
         case "ELBP":
-            i =0
+            datas = structToMatrixELBP(training_datas)
         case "HOG":
-            i =0
+            datas = structToMatrixHog(training_datas)
+        case _:
+            datas = training_datas
 
     SVD = TruncatedSVD(n_components=k,algorithm='arpack')
-    fit = SVD.fit_transform(datas)   
+    
+    SVD.fit(datas)
+   
+    fitted = SVD.transform(datas)   
+    newStruct = addToStruct(fitted, training_datas, model)
 
-    newStruct = addToStruct(fit, training_datas, model)
 
-    return fit, newStruct
+    return fitted, newStruct, SVD
 
-def LDA():
-    return 0
+#https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html
+def PCA(training_datas, k, model):
+    datas = None
+    match model:
+        case "moments":
+            datas = structToMatrixMoments(training_datas)
+        case "ELBP":
+            datas = structToMatrixELBP(training_datas)
+        case "HOG":
+            datas = structToMatrixHog(training_datas)
+        case _:
+            datas = training_datas
 
+    pca = PCAsolver(n_components=k, svd_solver='arpack')
+    
+
+    pca.fit(datas)
+
+    fitted = pca.transform(datas)   
+
+    newStruct = addToStruct(fitted, training_datas, model)
+
+
+    return fitted, newStruct, pca
+
+def LDA(training_datas, k, model):
+    datas = None
+    match model:
+        case "moments":
+            datas = structToMatrixMoments(training_datas)
+        case "ELBP":
+            datas = structToMatrixELBP(training_datas)
+        case "HOG":
+            datas = structToMatrixHog(training_datas)
+        case _:
+            datas = training_datas
+
+
+
+    lda = LDAsolver(n_components=k)
+    
+    lda.fit(datas)
+    fitted = lda.transform(datas)   
+
+    newStruct = addToStruct(fitted, training_datas, model)
+
+
+    return fitted, newStruct, lda
 
 
 
@@ -102,11 +319,16 @@ def structToMatrixMoments(datas):
 
 def structToMatrixELBP(datas):
     d = []
-    
     for img in datas:
-        tmp = img["features"]["ELBP"]
-        d.append(tmp)
-        
+        elbp = img["features"]["ELBP"]    
+        tmpMag = []
+        tmpMin = []
+        for e in elbp:
+            for ee in e:
+                tmpMag.append(float(ee[0])) 
+                tmpMin.append(float(ee[1]))
+        d.append(tmpMag)  #lasciamo solo i maggiori, perdiamo informazione sul perimetro    
+
     return d
 
 def structToMatrixHog(datas):

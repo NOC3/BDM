@@ -1,3 +1,19 @@
-task 1
- - fare funzioni per "arrayzzare" hog e elbp
- - fare PCA e LDA
+
+ottenere sempre una lista [cosa-richiesta] X query
+
+capire se quando si calcola matrice_features X-X capire se la trasposta può essere un arrei 1D
+
+task 5:
+    creare la matrice ma saltando il passaggio dell'accorpamento per tipo o soggetto
+
+
+
+task 8:
+    parte 1 ->  creiamo matrice adj con n più simili a obj = 1 else = 0
+                creiamo il grafo -> definiamo classi node, edge, grafo
+
+    parte 2 -> page rank -> capire come funziona per eventualmente aggiungere dati nei vari oggetti
+
+    task 8 ordine : 1) costruire matrice adj
+                    2) capire page rank
+                    3) costruire e riempire classi nodo ecc.

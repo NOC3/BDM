@@ -4,8 +4,6 @@ import matplotlib.image as img
 from skimage.feature import hog
 
 
-import copy
-
 from os import listdir
 from os.path import isfile, join
 
@@ -26,6 +24,30 @@ def showMoreImg(imgStruct):
         pl.imshow(imgStruct[i-1]["obj"])
         pl.axis('off')
         pl.title(i-1)
+        i+=1
+    pl.show()
+
+def showQueryImg(structQuery, similarityArray):
+    queryFileName = structQuery["path"]
+    
+    fig = pl.figure(figsize=(10, 7))
+    rows = 2
+    columns = len(similarityArray)
+
+    queryIMG = img.imread(queryFileName)
+    fig.add_subplot(rows, columns, 1)
+    pl.imshow(queryIMG)
+    pl.axis('off')
+    pl.title("query")
+
+    
+    i=0
+    for imgSimil in similarityArray:
+        queryIMG = img.imread(imgSimil[0])
+        fig.add_subplot(rows, columns, i+columns+1)
+        pl.imshow(queryIMG)
+        pl.axis('off')
+        pl.title(str(imgSimil[0])+"\n"+str(imgSimil[1]))
         i+=1
     pl.show()
 
